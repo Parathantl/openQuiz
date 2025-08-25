@@ -594,6 +594,17 @@ export default function GamePage() {
                 totalQuestions={quiz?.questions?.length || 0}
               />
             </div>
+            
+            {/* Back to Home Button */}
+            <div className="mt-8">
+              <Button 
+                onClick={() => router.push('/')}
+                size="lg"
+                variant="secondary"
+              >
+                Back to Home
+              </Button>
+            </div>
           </div>
         )}
       </main>

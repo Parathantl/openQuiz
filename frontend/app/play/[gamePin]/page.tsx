@@ -489,6 +489,13 @@ export default function PlayGamePage() {
                 <p className="text-lg text-gray-600 mb-8">
                   This quiz has finished.
                 </p>
+                <Button 
+                  onClick={() => router.push('/')}
+                  size="lg"
+                  variant="secondary"
+                >
+                  Back to Home
+                </Button>
               </>
             )}
           </div>
