@@ -41,7 +41,6 @@ backend/main
 *.out
 
 # Go tooling
-go.sum
 
 # ===========================================
 # Build outputs and caches
