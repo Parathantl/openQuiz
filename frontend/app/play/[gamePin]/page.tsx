@@ -528,18 +528,6 @@ export default function PlayGamePage() {
           </div>
         </div>
 
-        {/* Debug Info (remove in production) */}
-        <div className="card p-6 mt-6 bg-gray-50">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">Debug Info</h3>
-          <div className="text-xs text-gray-600 space-y-1">
-            <p>Game Status: {game.status}</p>
-            <p>Game Phase: {gamePhase}</p>
-            <p>Current Question Index: {currentQuestionIndex}</p>
-            <p>Has Current Question: {currentQuestion ? 'Yes' : 'No'}</p>
-            <p>Time Left: {timeLeft}s</p>
-            <p>Player Answer: {currentPlayerAnswer || 'None'}</p>
-          </div>
-        </div>
       </main>
     </div>
   )
