@@ -34,6 +34,7 @@ services:
     container_name: openquiz_backend_prod
     environment:
       - PORT=8080
+      - BIND_ADDRESS=0.0.0.0
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=${POSTGRES_USER:-openquiz}

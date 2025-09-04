@@ -8,9 +8,18 @@ import (
 	"openquiz/models"
 	"openquiz/routes"
 	"openquiz/services"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
+
+// getEnv gets an environment variable or returns a default value
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
 
 func main() {
 	// Load configuration
@@ -64,7 +73,12 @@ func main() {
 
 	// Start server
 	log.Printf("Server starting on port %s", cfg.Port)
-	if err := router.Run(":" + cfg.Port); err != nil {
+
+	// Use config to control binding address
+	serverAddr := cfg.BindAddress + ":" + cfg.Port
+
+	log.Printf("Server binding to %s", serverAddr)
+	if err := router.Run(serverAddr); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
 }

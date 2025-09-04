@@ -10,28 +10,30 @@ import (
 )
 
 type Config struct {
-	Port       string
-	DBHost     string
-	DBPort     string
-	DBUser     string
-	DBPassword string
-	DBName     string
-	RedisHost  string
-	RedisPort  string
-	JWTSecret  string
+	Port        string
+	BindAddress string
+	DBHost      string
+	DBPort      string
+	DBUser      string
+	DBPassword  string
+	DBName      string
+	RedisHost   string
+	RedisPort   string
+	JWTSecret   string
 }
 
 func Load() *Config {
 	return &Config{
-		Port:       getEnv("PORT", "8080"),
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5432"),
-		DBUser:     getEnv("DB_USER", "openquiz"),
-		DBPassword: getEnv("DB_PASSWORD", "openquiz123"),
-		DBName:     getEnv("DB_NAME", "openquiz"),
-		RedisHost:  getEnv("REDIS_HOST", "localhost"),
-		RedisPort:  getEnv("REDIS_PORT", "6379"),
-		JWTSecret:  getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+		Port:        getEnv("PORT", "8080"),
+		BindAddress: getEnv("BIND_ADDRESS", "localhost"),
+		DBHost:      getEnv("DB_HOST", "localhost"),
+		DBPort:      getEnv("DB_PORT", "5432"),
+		DBUser:      getEnv("DB_USER", "openquiz"),
+		DBPassword:  getEnv("DB_PASSWORD", "openquiz123"),
+		DBName:      getEnv("DB_NAME", "openquiz"),
+		RedisHost:   getEnv("REDIS_HOST", "localhost"),
+		RedisPort:   getEnv("REDIS_PORT", "6379"),
+		JWTSecret:   getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
 	}
 }
 
