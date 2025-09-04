@@ -25,6 +25,8 @@ interface QuizQuestionProps {
   onTimeUpdate?: (timeLeft: number) => void
   externalTimeLeft?: number
   timeLeft?: number
+  hasAnswered?: boolean
+  selectedOption?: number | null
 }
 
 export function QuizQuestion({ 
@@ -35,7 +37,9 @@ export function QuizQuestion({
   totalQuestions,
   onTimeUpdate,
   externalTimeLeft,
-  timeLeft: externalTime
+  timeLeft: externalTime,
+  hasAnswered: externalHasAnswered,
+  selectedOption: externalSelectedOption
 }: QuizQuestionProps) {
   // Safety check: ensure question exists and has required properties
   if (!question || !question.time_limit || !question.options) {
@@ -49,17 +53,17 @@ export function QuizQuestion({
   }
 
   const [timeLeft, setTimeLeft] = useState(externalTime || externalTimeLeft || question.time_limit)
-  const [selectedOption, setSelectedOption] = useState<number | null>(null)
-  const [isAnswered, setIsAnswered] = useState(false)
+  const [selectedOption, setSelectedOption] = useState<number | null>(externalSelectedOption || null)
+  const [isAnswered, setIsAnswered] = useState(externalHasAnswered || false)
   const [questionStarted, setQuestionStarted] = useState(false)
 
   // Start question when component mounts
   useEffect(() => {
     setQuestionStarted(true)
     setTimeLeft(externalTime || externalTimeLeft || question.time_limit)
-    setSelectedOption(null)
-    setIsAnswered(false)
-  }, [question.id, externalTime, externalTimeLeft, question.time_limit])
+    setSelectedOption(externalSelectedOption || null)
+    setIsAnswered(externalHasAnswered || false)
+  }, [question.id, externalTime, externalTimeLeft, question.time_limit, externalSelectedOption, externalHasAnswered])
 
   // Handle external time updates
   useEffect(() => {
@@ -108,35 +112,35 @@ export function QuizQuestion({
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6">
       {/* Question Header */}
-      <div className="text-center mb-8">
-        <div className="text-sm text-gray-500 mb-2">
+      <div className="text-center mb-6 sm:mb-8">
+        <div className="text-xs sm:text-sm text-gray-500 mb-2">
           Question {currentQuestionIndex + 1} of {totalQuestions}
         </div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-4 px-2">
           {question.text}
         </h2>
         
         {/* Timer */}
-        <div className="inline-flex items-center px-4 py-2 bg-gray-100 rounded-full">
-          <div className={`text-2xl font-mono font-bold ${getTimeColor()}`}>
+        <div className="inline-flex items-center px-3 sm:px-4 py-2 bg-gray-100 rounded-full">
+          <div className={`text-lg sm:text-xl md:text-2xl font-mono font-bold ${getTimeColor()}`}>
             {formatTime(timeLeft)}
           </div>
         </div>
       </div>
 
       {/* Answer Options */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 mb-6 sm:mb-8">
         {question.options.map((option) => (
           <Button
             key={option.id}
             variant={selectedOption === option.id ? "primary" : "secondary"}
             size="lg"
-            className={`h-20 text-lg font-medium transition-all duration-200 ${
+            className={`min-h-[60px] sm:h-20 text-base sm:text-lg font-medium transition-all duration-200 p-4 ${
               selectedOption === option.id 
                 ? 'ring-4 ring-primary-300 shadow-lg' 
-                : 'hover:scale-105'
+                : 'hover:scale-105 active:scale-95'
             }`}
             onClick={() => handleOptionSelect(option.id)}
             disabled={isAnswered || isCreator}
@@ -148,17 +152,17 @@ export function QuizQuestion({
 
       {/* Status */}
       {isCreator && (
-        <div className="text-center text-gray-600">
+        <div className="text-center text-gray-600 text-sm sm:text-base">
           <p>Players are answering this question...</p>
-          <p className="text-sm">Time remaining: {formatTime(timeLeft)}</p>
+          <p className="text-xs sm:text-sm">Time remaining: {formatTime(timeLeft)}</p>
         </div>
       )}
 
       {!isCreator && isAnswered && (
         <div className="text-center">
-          <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full">
+          <div className="inline-flex items-center px-3 sm:px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm sm:text-base">
             <span className="mr-2">✓</span>
-            Answer submitted!
+            Answer submitted! Waiting for timer to end...
           </div>
         </div>
       )}

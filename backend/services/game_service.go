@@ -301,7 +301,7 @@ func (s *GameService) NextQuestion(gamePin string, hub *Hub) error {
 		// Update game state
 		gameState.Status = "finished"
 		gameState.CurrentQuestion = nil
-		gameState.CurrentQuestionIndex = len(game.Quiz.Questions) // Set to total questions to indicate completion
+		gameState.CurrentQuestionIndex = len(game.Quiz.Questions) - 1 // Set to last question index to indicate completion
 
 		if err := s.storeGameState(normalizedPin, gameState); err != nil {
 			log.Printf("Failed to store final game state: %v", err)
@@ -406,8 +406,62 @@ func (s *GameService) EndQuestion(gamePin string, hub *Hub, questionIndex int) e
 		log.Printf("Error fetching answers: %v", err)
 	}
 
+	// Get all players in the game to include those who didn't answer
+	var allPlayers []models.Player
+	if err := s.db.Where("game_id = ?", game.ID).Find(&allPlayers).Error; err != nil {
+		log.Printf("Error fetching players: %v", err)
+	}
+
+	// Create a map of players who answered
+	answeredPlayers := make(map[uint]bool)
+	for _, answer := range gameAnswers {
+		answeredPlayers[answer.PlayerID] = true
+	}
+
+	// Process all answers and update scores
+	for i := range gameAnswers {
+		answer := &gameAnswers[i]
+
+		// Calculate points based on time spent and correctness
+		points := s.calculatePoints(answer.TimeSpent, question.TimeLimit, answer.IsCorrect)
+
+		// Update the answer with calculated points
+		answer.Points = points
+		if err := s.db.Model(answer).Update("points", points).Error; err != nil {
+			log.Printf("Error updating answer points: %v", err)
+		}
+
+		// Update player score
+		if err := s.db.Model(&models.Player{}).Where("id = ?", answer.PlayerID).
+			Update("score", gorm.Expr("score + ?", points)).Error; err != nil {
+			log.Printf("Error updating player score: %v", err)
+		}
+	}
+
+	// Update game state in Redis with new scores
+	gameState := s.getGameState(normalizedPin)
+	if gameState != nil {
+		// Get updated players with new scores
+		var updatedPlayers []models.Player
+		s.db.Where("game_id = ?", game.ID).Find(&updatedPlayers)
+
+		// Update game state with new player scores
+		gameState.Players = make([]GamePlayer, len(updatedPlayers))
+		for i, player := range updatedPlayers {
+			gameState.Players[i] = GamePlayer{
+				ID:    player.ID,
+				Name:  player.Name,
+				Score: player.Score,
+			}
+		}
+		s.storeGameState(normalizedPin, gameState)
+	}
+
 	// Prepare answer results with correct answer revealed
+	// Include all players, even those who didn't answer
 	answerResults := []gin.H{}
+
+	// First, add players who answered
 	for _, answer := range gameAnswers {
 		answerResults = append(answerResults, gin.H{
 			"player_id":   answer.PlayerID,
@@ -419,6 +473,20 @@ func (s *GameService) EndQuestion(gamePin string, hub *Hub, questionIndex int) e
 		})
 	}
 
+	// Then add players who didn't answer
+	for _, player := range allPlayers {
+		if !answeredPlayers[player.ID] {
+			answerResults = append(answerResults, gin.H{
+				"player_id":   player.ID,
+				"player_name": player.Name,
+				"option_id":   nil,
+				"is_correct":  false,
+				"points":      0,
+				"time_spent":  0,
+			})
+		}
+	}
+
 	// Find the correct option
 	var correctOption *models.Option
 	for _, option := range question.Options {
@@ -428,13 +496,18 @@ func (s *GameService) EndQuestion(gamePin string, hub *Hub, questionIndex int) e
 		}
 	}
 
-	// Broadcast question end with results and correct answer
+	// Get updated players for broadcast
+	var updatedPlayers []models.Player
+	s.db.Where("game_id = ?", game.ID).Order("score DESC").Find(&updatedPlayers)
+
+	// Broadcast question end with results, correct answer, and updated leaderboard
 	if hub != nil {
 		hub.BroadcastToGame(normalizedPin, "question_end", gin.H{
 			"question_index":  questionIndex,
 			"question":        question, // Now includes correct answers
 			"correct_option":  correctOption,
 			"answers":         answerResults,
+			"players":         updatedPlayers, // Updated leaderboard
 			"total_questions": len(game.Quiz.Questions),
 		})
 	}
@@ -520,6 +593,25 @@ func (s *GameService) GetPlayerByID(playerID uint) (*models.Player, error) {
 	return &player, err
 }
 
+func (s *GameService) UpdateGameStatus(gamePin string, status string) error {
+	normalizedPin := strings.ToLower(gamePin)
+
+	// Update game status in database
+	if err := s.db.Model(&models.Game{}).Where("LOWER(pin) = ?", normalizedPin).
+		Update("status", status).Error; err != nil {
+		return err
+	}
+
+	// Update game state in Redis
+	gameState := s.getGameState(normalizedPin)
+	if gameState != nil {
+		gameState.Status = status
+		s.storeGameState(normalizedPin, gameState)
+	}
+
+	return nil
+}
+
 func (s *GameService) SubmitAnswer(gamePin string, playerID uint, req *SubmitAnswerRequest, hub *Hub) error {
 	normalizedPin := strings.ToLower(gamePin)
 
@@ -557,10 +649,8 @@ func (s *GameService) SubmitAnswer(gamePin string, playerID uint, req *SubmitAns
 		timeSpent = question.TimeLimit
 	}
 
-	// Calculate points based on time spent and correctness
-	points := s.calculatePoints(timeSpent, question.TimeLimit, option.IsCorrect)
-
-	// Create game answer
+	// Store answer without calculating points or updating score yet
+	// Points will be calculated and scores updated when the timer ends
 	gameAnswer := models.GameAnswer{
 		GameID:     game.ID,
 		PlayerID:   playerID,
@@ -568,43 +658,18 @@ func (s *GameService) SubmitAnswer(gamePin string, playerID uint, req *SubmitAns
 		OptionID:   req.OptionID,
 		IsCorrect:  option.IsCorrect,
 		TimeSpent:  timeSpent,
-		Points:     points,
+		Points:     0, // Will be calculated when timer ends
 	}
 
 	if err := s.db.Create(&gameAnswer).Error; err != nil {
 		return err
 	}
 
-	// Update player score
-	if err := s.db.Model(&models.Player{}).Where("id = ?", playerID).
-		Update("score", gorm.Expr("score + ?", points)).Error; err != nil {
-		return err
-	}
-
-	// Update game state in Redis
-	gameState := s.getGameState(normalizedPin)
-	if gameState != nil {
-		// Update player score in game state
-		for i, player := range gameState.Players {
-			if player.ID == playerID {
-				gameState.Players[i].Score += points
-				break
-			}
-		}
-		s.storeGameState(normalizedPin, gameState)
-	}
-
-	// Get updated players for broadcast
-	var updatedPlayers []models.Player
-	s.db.Where("game_id = ?", game.ID).Find(&updatedPlayers)
-
-	// Broadcast real-time score update to all connected clients (but don't reveal correct answer yet)
+	// Broadcast that answer was submitted (but don't reveal if correct or show points yet)
 	if hub != nil {
-		hub.BroadcastToGame(normalizedPin, "score_update", gin.H{
-			"players":          updatedPlayers,
+		hub.BroadcastToGame(normalizedPin, "answer_submitted", gin.H{
 			"player_id":        playerID,
-			"points_earned":    points,
-			"answer_submitted": true, // Don't reveal if correct until question ends
+			"answer_submitted": true,
 		})
 	}
 

@@ -18,10 +18,10 @@ interface Question {
 interface PlayerAnswer {
   player_id: number
   player_name: string
-  selected_option_id: number | null
+  option_id: number | null
   is_correct: boolean
-  score_earned: number
-  time_taken: number
+  points: number
+  time_spent: number
 }
 
 interface QuestionResultsProps {
@@ -59,18 +59,18 @@ export function QuestionResults({
   const correctOption = question.options.find(opt => opt.is_correct)
   const totalPlayers = playerAnswers.length
   const correctAnswers = playerAnswers.filter(answer => answer.is_correct).length
-  const averageScore = playerAnswers.reduce((sum, answer) => sum + answer.score_earned, 0) / totalPlayers
+  const averageScore = playerAnswers.reduce((sum, answer) => sum + answer.points, 0) / totalPlayers
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6">
       {/* Question Results Header */}
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">Question Results</h2>
-        <div className="text-lg text-gray-600 mb-2">{question.text}</div>
+      <div className="text-center mb-6 sm:mb-8">
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">Question Results</h2>
+        <div className="text-base sm:text-lg text-gray-600 mb-2 px-2">{question.text}</div>
         
         {/* Timer for next question */}
         {isCreator && (
-          <div className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-full">
+          <div className="inline-flex items-center px-3 sm:px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm sm:text-base">
             <span className="mr-2">⏱️</span>
             Next question in {timeLeft}s
           </div>
@@ -78,33 +78,33 @@ export function QuestionResults({
       </div>
 
       {/* Correct Answer */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-8">
-        <h3 className="text-lg font-semibold text-green-800 mb-3">✅ Correct Answer</h3>
-        <div className="text-xl font-medium text-green-900">
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
+        <h3 className="text-base sm:text-lg font-semibold text-green-800 mb-3">✅ Correct Answer</h3>
+        <div className="text-lg sm:text-xl font-medium text-green-900">
           {correctOption?.text}
         </div>
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-blue-600">{totalPlayers}</div>
-          <div className="text-sm text-blue-600">Total Players</div>
+      <div className="grid grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 text-center">
+          <div className="text-xl sm:text-2xl font-bold text-blue-600">{totalPlayers}</div>
+          <div className="text-xs sm:text-sm text-blue-600">Total Players</div>
         </div>
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-green-600">{correctAnswers}</div>
-          <div className="text-sm text-green-600">Correct Answers</div>
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 text-center">
+          <div className="text-xl sm:text-2xl font-bold text-green-600">{correctAnswers}</div>
+          <div className="text-xs sm:text-sm text-green-600">Correct Answers</div>
         </div>
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-purple-600">{Math.round(averageScore)}</div>
-          <div className="text-sm text-purple-600">Avg Score</div>
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 sm:p-4 text-center">
+          <div className="text-xl sm:text-2xl font-bold text-purple-600">{Math.round(averageScore)}</div>
+          <div className="text-xs sm:text-sm text-purple-600">Avg Score</div>
         </div>
       </div>
 
       {/* Player Performance */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Player Performance</h3>
-        <div className="space-y-3">
+      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Player Performance</h3>
+        <div className="space-y-2 sm:space-y-3">
           {playerAnswers.map((answer) => (
             <div
               key={answer.player_id}
@@ -114,26 +114,26 @@ export function QuestionResults({
                   : 'bg-red-50 border-red-200'
               }`}
             >
-              <div className="flex items-center space-x-3">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm ${
+              <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+                <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-xs sm:text-sm flex-shrink-0 ${
                   answer.is_correct 
                     ? 'bg-green-500 text-white' 
                     : 'bg-red-500 text-white'
                 }`}>
                   {answer.is_correct ? '✓' : '✗'}
                 </div>
-                <span className="font-medium text-gray-900">{answer.player_name}</span>
+                <span className="font-medium text-gray-900 text-sm sm:text-base truncate">{answer.player_name}</span>
               </div>
               
-              <div className="text-right">
-                <div className="text-sm text-gray-600">
-                  {answer.selected_option_id 
-                    ? question.options.find(opt => opt.id === answer.selected_option_id)?.text
+              <div className="text-right flex-shrink-0 ml-2">
+                <div className="text-xs sm:text-sm text-gray-600">
+                  {answer.option_id 
+                    ? question.options.find(opt => opt.id === answer.option_id)?.text
                     : 'No answer'
                   }
                 </div>
                 <div className="text-xs text-gray-500">
-                  {answer.score_earned} pts • {answer.time_taken}s
+                  {answer.points} pts • {answer.time_spent}s
                 </div>
               </div>
             </div>
@@ -141,17 +141,7 @@ export function QuestionResults({
         </div>
       </div>
 
-      {/* Next Question Button (Creator Only) */}
-      {isCreator && (
-        <div className="text-center mt-8">
-          <button
-            onClick={onNextQuestion}
-            className="bg-primary-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-700 transition-colors"
-          >
-            Next Question
-          </button>
-        </div>
-      )}
+      {/* Next Question Button (Creator Only) - Removed to avoid duplication */}
     </div>
   )
 }

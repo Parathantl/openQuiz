@@ -76,10 +76,11 @@ export default function GamePage() {
 
     const connectWebSocket = () => {
       try {
-        console.log('Host attempting to connect to WebSocket:', `ws://localhost:8080/ws/${game.pin}/${user.id}?playerName=${encodeURIComponent(user.username)}`)
+        const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080'
+        console.log('Host attempting to connect to WebSocket:', `${wsUrl}/ws/${game.pin}/${user.id}?playerName=${encodeURIComponent(user.username)}`)
         console.log('Host connection details:', { gamePin: game.pin, userId: user.id, username: user.username })
         
-        ws = new WebSocket(`ws://localhost:8080/ws/${game.pin}/${user.id}?playerName=${encodeURIComponent(user.username)}`)
+        ws = new WebSocket(`${wsUrl}/ws/${game.pin}/${user.id}?playerName=${encodeURIComponent(user.username)}`)
         
         ws.onopen = () => {
           console.log('WebSocket connected successfully for quiz host')
@@ -212,6 +213,22 @@ export default function GamePage() {
       case 'question_end':
         setGamePhase('results')
         setPlayerAnswers(data.payload.answers || [])
+        // Update the current question with correct answers revealed
+        if (data.payload.question && quiz) {
+          const updatedQuiz = { ...quiz }
+          if (!updatedQuiz.questions) {
+            updatedQuiz.questions = []
+          }
+          while (updatedQuiz.questions.length <= currentQuestionIndex) {
+            updatedQuiz.questions.push({} as any)
+          }
+          updatedQuiz.questions[currentQuestionIndex] = data.payload.question
+          setQuiz(updatedQuiz)
+        }
+        // Update leaderboard with new scores
+        if (data.payload.players) {
+          setGamePlayers(data.payload.players)
+        }
         break
       case 'game_end':
         setGamePhase('finished')
@@ -524,10 +541,19 @@ export default function GamePage() {
             </div>
             
             {/* Quiz Controls */}
-            <div className="text-center">
+            <div className="text-center space-y-4">
               <Button onClick={endQuestion} size="lg">
                 End Question
               </Button>
+              <div>
+                <Button 
+                  onClick={() => router.push(`/game/${quizId}/question`)}
+                  size="lg"
+                  variant="secondary"
+                >
+                  Open Question Page
+                </Button>
+              </div>
             </div>
           </div>
         )}

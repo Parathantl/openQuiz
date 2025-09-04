@@ -61,6 +61,23 @@ func (h *Hub) Run() {
 				delete(h.clients, client)
 				close(client.send)
 				log.Printf("Client unregistered: %s for game %s (player %d: %s) - Total clients: %d", client.id, client.gamePin, client.playerID, client.playerName, len(h.clients))
+
+				// Check if creator disconnected and update game status
+				if client.playerID == 0 {
+					log.Printf("Creator disconnected from game %s", client.gamePin)
+					// Update game status to finished if creator left
+					if h.gameService != nil {
+						if err := h.gameService.UpdateGameStatus(client.gamePin, "finished"); err != nil {
+							log.Printf("Error updating game status after creator disconnect: %v", err)
+						} else {
+							// Broadcast game end to remaining players
+							h.BroadcastToGame(client.gamePin, "game_end", map[string]interface{}{
+								"message": "Quiz creator has left the game. The quiz has ended.",
+								"reason":  "creator_disconnected",
+							})
+						}
+					}
+				}
 			}
 			h.mutex.Unlock()
 
@@ -257,6 +274,20 @@ func (h *Hub) IsPlayerConnected(gamePin string, playerID uint) bool {
 	for client := range h.clients {
 		// Use case-insensitive comparison for game pins
 		if strings.EqualFold(client.gamePin, gamePin) && client.playerID == playerID {
+			return true
+		}
+	}
+	return false
+}
+
+func (h *Hub) IsCreatorConnected(gamePin string) bool {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+
+	// Check if there's a creator (player ID 0) connected for this game
+	for client := range h.clients {
+		// Use case-insensitive comparison for game pins
+		if strings.EqualFold(client.gamePin, gamePin) && client.playerID == 0 {
 			return true
 		}
 	}
